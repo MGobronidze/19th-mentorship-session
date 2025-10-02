@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ასტრონომიული დღიური</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>NASA-ს დღის სურათი (APOD)</h1>
+        <p>თქვენი ასტრონომიული მოგზაურობა იწყება აქ.</p>
+        <div id="session-message" class="hidden"></div>
+    </header>
+
+    <main>
+        <section id="daily-photo-section">
+            <h2>დღევანდელი სურათი</h2>
+            <div id="loading-indicator">სურათი იტვირთება...</div>
+            <div id="photo-container" class="hidden">
+                <h3 id="photo-title"></h3>
+                <img id="photo-image" src="" alt="ასტრონომიული სურათი">
+                <p id="photo-explanation"></p>
+                <button id="save-button">⭐ რჩეულებში შენახვა</button>
+                <div id="save-feedback" class="hidden"></div>
+            </div>
+        </section>
+
+        <hr>
+
+        <section id="favorites-section">
+            <h2>ჩემი რჩეულები (<span id="fav-count">0</span>)</h2>
+            <div id="favorites-list">
+                <p id="no-favorites-message">რჩეულებში არაფერი გაქვთ.</p>
+            </div>
+            <button id="clear-favorites-button">🗑️ რჩეულების გასუფთავება</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 ასტრონომიული დღიური | იყენებს NASA APOD API-ს</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
