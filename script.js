@@ -1,23 +1,27 @@
-// A. გლობალური ცვლადები და API კონფიგურაცია
-// !!! ჩაანაცვლეთ ეს თქვენი რეალური გასაღებით
-const NASA_API_KEY = 'DEMO_KEY'; // NASA-ს საცდელი გასაღები;
-const APOD_URL = `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
-const SESSION_KEY = 'hasGreeted'; // sessionStorage-ის გასაღები
-const LOCAL_KEY = 'apodFavorites'; // localStorage-ის გასაღები
+// === A. გლობალური კონფიგურაცია ===
+// უსაფრთხოების მიზნით, ფრონტენდ პროექტებში გამოიყენება DEMO_KEY.
+// DEMO_KEY-ს აქვს დაბალი მოთხოვნების ლიმიტი.
+const NASA_API_KEY = 'DEMO_KEY'; 
+const BASE_APOD_URL = `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
+const SESSION_KEY = 'hasGreeted'; // sessionStorage-ის გასაღები სესიის მისალმებისთვის
+const LOCAL_KEY = 'apodFavorites'; // localStorage-ის გასაღები რჩეულების შესანახად
 
-// DOM ელემენტების აღება
+// === B. DOM ელემენტების აღება ===
 const loadingIndicator = document.getElementById('loading-indicator');
 const photoContainer = document.getElementById('photo-container');
 const photoTitle = document.getElementById('photo-title');
 const photoImage = document.getElementById('photo-image');
 const photoExplanation = document.getElementById('photo-explanation');
 const saveButton = document.getElementById('save-button');
-const saveFeedback = document.getElementById('save-feedback');
+const delayedInfo = document.getElementById('delayed-info'); // setTimeout ფიდბექი
 const sessionMessage = document.getElementById('session-message');
 const favoritesList = document.getElementById('favorites-list');
 const favCount = document.getElementById('fav-count');
 const clearFavoritesButton = document.getElementById('clear-favorites-button');
 const noFavoritesMessage = document.getElementById('no-favorites-message');
+const dateInput = document.getElementById('apod-date');
+const searchButton = document.getElementById('search-button');
+const errorMessage = document.getElementById('error-message');
 
 
 // ----------------------------------------------------------------------
@@ -25,45 +29,52 @@ const noFavoritesMessage = document.getElementById('no-favorites-message');
 // ----------------------------------------------------------------------
 
 /**
- * ასინქრონულად იღებს დღევანდელი სურათის მონაცემებს NASA APOD API-დან.
+ * ასინქრონულად იღებს APOD მონაცემებს.
  * იყენებს async/await-ს promise-ების სამართავად.
+ * @param {string|null} date - თარიღი YYYY-MM-DD ფორმატში.
  */
-async function getDailyPhoto() {
-    loadingIndicator.classList.remove('hidden'); // ჩვენება
-    photoContainer.classList.add('hidden'); // დამალვა
+async function getDailyPhoto(date = null) {
+    loadingIndicator.classList.remove('hidden');
+    photoContainer.classList.add('hidden');
+    errorMessage.classList.add('hidden'); 
+    
+    let requestUrl = BASE_APOD_URL; 
+
+    // თუ თარიღი მოწოდებულია, ვამატებთ მას URL-ს
+    if (date) {
+        requestUrl = `${BASE_APOD_URL}&date=${date}`;
+    }
 
     try {
-        // fetch API აბრუნებს Promise-ს
-        const response = await fetch(APOD_URL);
+        // 1. fetch API ზარი, რომელიც აბრუნებს Promise-ს
+        const response = await fetch(requestUrl); 
 
-        // await ელოდება promise-ის შესრულებას (პასუხის მიღებას)
         if (!response.ok) {
-            // შეცდომის დამუშავება
-            throw new Error(`HTTP შეცდომა! სტატუსი: ${response.status}`);
+            // თუ პასუხი არ არის OK (მაგალითად, 400 Bad Request)
+            const errorData = await response.json();
+            // ვყრით შეცდომას, რომ try...catch-მა დაიჭიროს
+            throw new Error(errorData.msg || `HTTP შეცდომა! სტატუსი: ${response.status}`);
         }
 
-        // response.json() ასევე აბრუნებს Promise-ს მონაცემების გაანალიზების შემდეგ
+        // 2. response.json() ასევე აბრუნებს Promise-ს
         const data = await response.json();
         
         displayPhoto(data); // მონაცემების ჩვენება
         
     } catch (error) {
+        // შეცდომის დამუშავება (მაგ. ქსელის შეცდომა ან API შეცდომა)
         console.error('შეცდომა APOD-ის მოძიებისას:', error);
-        
-        // მომხმარებლისთვის შეცდომის ჩვენება
-        photoContainer.innerHTML = `<p style="color: red;">შეცდომა მონაცემების მოტანისას. გთხოვთ, შეამოწმეთ თქვენი API გასაღები ან ქსელი.</p>`;
-        photoContainer.classList.remove('hidden');
+        errorMessage.textContent = `მონაცემების მოტანა ვერ მოხერხდა: ${error.message}`;
+        errorMessage.classList.remove('hidden');
         
     } finally {
-        // ეს ბლოკი ყოველთვის შესრულდება, მიუხედავად try/catch შედეგისა
+        // ეს ყოველთვის შესრულდება ჩატვირთვის ინდიკატორის დასამალად
         loadingIndicator.classList.add('hidden');
     }
 }
 
-
 /**
  * მიღებული მონაცემების DOM-ში ჩვენება.
- * @param {object} data - APOD მონაცემები
  */
 function displayPhoto(data) {
     if (data.media_type === 'image') {
@@ -73,33 +84,37 @@ function displayPhoto(data) {
         photoExplanation.textContent = data.explanation;
         photoContainer.classList.remove('hidden');
         
-        // B. setTimeout: ვაჩვენებთ უკუკავშირს 3 წამის შემდეგ
+        // setTimeout-ის გამოყენება
         displayDelayedFeedback();
 
     } else {
-        // ვიდეოს შემთხვევაში (APOD შეიძლება იყოს ვიდეოც)
-        photoContainer.innerHTML = `<p>დღევანდელი APOD არის ვიდეო. იხილეთ ორიგინალი ბმულზე: <a href="${data.url}" target="_blank">${data.title}</a></p>`;
+        // ვიდეოს შემთხვევაში
+        photoContainer.innerHTML = `<p><strong>${data.title}</strong><br>დღევანდელი APOD არის ვიდეო. იხილეთ ორიგინალი ბმულზე: <a href="${data.url}" target="_blank">${data.url}</a></p><p>${data.explanation}</p>`;
         photoContainer.classList.remove('hidden');
+        // ვიდეოს შემთხვევაში ღილაკის დამალვა
+        saveButton.classList.add('hidden');
+        delayedInfo.classList.add('hidden');
     }
 }
+
 
 // ----------------------------------------------------------------------
 // 2. დროის მენეჯმენტი (SET TIMEOUT)
 // ----------------------------------------------------------------------
 
 /**
- * აჩვენებს მოკლე შეტყობინებას და შემდეგ მალავს მას.
+ * აჩვენებს ფიდბექს 3 წამით და შემდეგ მალავს მას, ავლენს შენახვის ღილაკს.
  */
 function displayDelayedFeedback() {
-    saveFeedback.textContent = 'გამოჩნდება შენახვის ღილაკი 5 წამში!';
-    saveFeedback.classList.remove('hidden');
+    delayedInfo.textContent = 'რჩეულებში შენახვის ღილაკი გამოჩნდება 3 წამში...';
+    delayedInfo.classList.remove('hidden');
     saveButton.classList.add('hidden');
 
-    // setTimeout გამოიყენება კონკრეტული დროის შემდეგ ფუნქციის შესასრულებლად
+    // setTimeout გამოიყენება ფუნქციის შესრულების დაგვიანებისთვის
     setTimeout(() => {
-        saveFeedback.classList.add('hidden');
-        saveButton.classList.remove('hidden'); // ღილაკის ჩვენება დაყოვნებით
-    }, 5000); // 5000 მილიწამი = 5 წამი
+        delayedInfo.classList.add('hidden');
+        saveButton.classList.remove('hidden'); // ღილაკის ჩვენება
+    }, 3000); // 3000 მილიწამი = 3 წამი
 }
 
 
@@ -111,23 +126,22 @@ function displayDelayedFeedback() {
  * ინახავს მიმდინარე სურათის მონაცემებს localStorage-ში.
  */
 function saveFavorite(title, url) {
-    // 1. localStorage-დან არსებული რჩეულების მასივის მოძიება
+    // 1. არსებული მონაცემების მოტანა (JSON-ის სტრიქონი)
     const favoritesJSON = localStorage.getItem(LOCAL_KEY);
-    // JSON.parse() - სტრიქონის ობიექტად გადაქცევა. თუ არაფერია, ვიყენებთ ცარიელ მასივს ([])
+    // JSON.parse() - სტრიქონის JS ობიექტად/მასივად გადაქცევა
     let favorites = favoritesJSON ? JSON.parse(favoritesJSON) : [];
 
     // 2. დუბლიკატების შემოწმება
     const isDuplicate = favorites.some(fav => fav.title === title);
     if (isDuplicate) {
-        alert('ეს სურათი უკვე არის თქვენს რჩეულებში!');
+        alert('ეს სურათი უკვე შეინახეთ.');
         return;
     }
 
     // 3. ახალი ობიექტის დამატება
     favorites.push({ title, url, date: new Date().toLocaleDateString() });
 
-    // 4. განახლებული მასივის localStorage-ში შენახვა
-    // JSON.stringify() - ობიექტის სტრიქონად გადაქცევა, რადგან localStorage მხოლოდ სტრიქონებს ინახავს.
+    // 4. განახლებული მასივის შენახვა (JSON.stringify() - ობიექტის სტრიქონად გადაქცევა)
     localStorage.setItem(LOCAL_KEY, JSON.stringify(favorites));
 
     alert(`'${title}' წარმატებით შეინახა!`);
@@ -138,30 +152,28 @@ function saveFavorite(title, url) {
  * localStorage-დან შენახული სურათების ჩატვირთვა და ჩვენება.
  */
 function renderFavorites() {
-    favoritesList.innerHTML = ''; // სიის გასუფთავება
+    favoritesList.innerHTML = ''; 
     const favoritesJSON = localStorage.getItem(LOCAL_KEY);
     const favorites = favoritesJSON ? JSON.parse(favoritesJSON) : [];
     
     favCount.textContent = favorites.length;
     
-    // შეტყობინების ჩვენება/დამალვა
     if (favorites.length === 0) {
         noFavoritesMessage.classList.remove('hidden');
     } else {
         noFavoritesMessage.classList.add('hidden');
+        
+        favorites.forEach(fav => {
+            const item = document.createElement('div');
+            item.className = 'fav-item';
+            item.innerHTML = `
+                <h4>${fav.title}</h4>
+                <p>შენახულია: ${fav.date}</p>
+                <a href="${fav.url}" target="_blank">სურათის ნახვა</a>
+            `;
+            favoritesList.appendChild(item);
+        });
     }
-
-    // თითოეული რჩეულისთვის HTML ელემენტის შექმნა
-    favorites.forEach(fav => {
-        const item = document.createElement('div');
-        item.className = 'fav-item';
-        item.innerHTML = `
-            <h4>${fav.title}</h4>
-            <p>შენახულია: ${fav.date}</p>
-            <a href="${fav.url}" target="_blank">სურათის ნახვა</a>
-        `;
-        favoritesList.appendChild(item);
-    });
 }
 
 /**
@@ -170,9 +182,10 @@ function renderFavorites() {
 function clearFavorites() {
     if (confirm('ნამდვილად გსურთ ყველა რჩეულის წაშლა?')) {
         localStorage.removeItem(LOCAL_KEY);
-        renderFavorites(); // სიის განახლება
+        renderFavorites();
     }
 }
+
 
 // ----------------------------------------------------------------------
 // 4. სესიის მართვა (SESSIONSTORAGE)
@@ -187,7 +200,7 @@ function checkSessionGreeting() {
 
     if (!hasGreeted) {
         // თუ პირველი ნახვაა ამ სესიაზე
-        sessionMessage.textContent = 'მოგესალმებით! ეს თქვენი პირველი ნახვაა ამ სესიაზე. მონაცემები სესიის დასრულებისას გაქრება.';
+        sessionMessage.textContent = 'მოგესალმებით! ეს სესიის მისალმებაა. ის გაქრება ბრაუზერის დახურვისას.';
         sessionMessage.classList.remove('hidden');
 
         // ვინახავთ მონაცემს, რომ მომხმარებელს უკვე მივესალმეთ
@@ -202,23 +215,44 @@ function checkSessionGreeting() {
 
 
 // ----------------------------------------------------------------------
-// 5. ინიციალიზაცია (EVENT LISTENERS)
+// 5. ინიციალიზაცია და Event Listeners
 // ----------------------------------------------------------------------
 
-// ღილაკზე დაჭერის Event Listener
+// რჩეულებში შენახვის ლოგიკა
 saveButton.addEventListener('click', () => {
-    // მონაცემების აღება და შენახვის ფუნქციის გამოძახება
     const title = photoTitle.textContent;
     const url = photoImage.src;
     saveFavorite(title, url);
 });
 
+// რჩეულების გასუფთავების ლოგიკა
 clearFavoritesButton.addEventListener('click', clearFavorites);
+
+// თარიღის მიხედვით ძებნის ლოგიკა
+searchButton.addEventListener('click', () => {
+    const selectedDate = dateInput.value;
+    
+    if (selectedDate) {
+        getDailyPhoto(selectedDate);
+    } else {
+        errorMessage.textContent = 'გთხოვთ, აირჩიოთ თარიღი.';
+        errorMessage.classList.remove('hidden');
+    }
+});
 
 
 // გვერდის ჩატვირთვისას შესრულებადი ფუნქციები
 document.addEventListener('DOMContentLoaded', () => {
-    checkSessionGreeting(); // sessionStorage-ის შემოწმება
-    getDailyPhoto(); // API-დან სურათის მოტანა
-    renderFavorites(); // localStorage-დან რჩეულების ჩატვირთვა
+    // 1. ვაყენებთ მაქსიმალურ თარიღს დღევანდელზე
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.max = today;
+    
+    // 2. ვამოწმებთ სესიას (sessionStorage)
+    checkSessionGreeting(); 
+    
+    // 3. ვტვირთავთ დღევანდელ სურათს (fetch, async/await)
+    getDailyPhoto(); 
+    
+    // 4. ვტვირთავთ რჩეულებს (localStorage)
+    renderFavorites(); 
 });

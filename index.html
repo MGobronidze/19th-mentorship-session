@@ -3,43 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ასტრონომიული დღიური</title>
+    <title>NASA APOD დროის მანქანა</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <header>
-        <h1>NASA-ს დღის სურათი (APOD)</h1>
-        <p>თქვენი ასტრონომიული მოგზაურობა იწყება აქ.</p>
-        <div id="session-message" class="hidden"></div>
+        <h1>APOD დროის მანქანა 🪐</h1>
+        <p>იმოგზაურეთ დროში და ნახეთ NASA-ს დღის სურათი ნებისმიერი თარიღისთვის.</p>
+        <!-- Session Storage-ით მართული მისალმების შეტყობინება -->
+        <div id="session-message" class="session-message hidden"></div>
     </header>
 
     <main>
+        <!-- თარიღის ამორჩევის სექცია -->
+        <section id="date-selector-section">
+            <h2>აირჩიეთ თარიღი</h2>
+            <div class="input-group">
+                <label for="apod-date">თარიღი:</label>
+                <!-- max ატრიბუტი JavaScript-ით დაყენდება, რათა თავიდან ავიცილოთ მომავალი თარიღის არჩევა -->
+                <input type="date" id="apod-date"> 
+                <button id="search-button">მოძიება</button>
+            </div>
+            <!-- API შეცდომის შეტყობინებისთვის -->
+            <p id="error-message" class="error-message hidden"></p>
+        </section>
+
+        <hr>
+
+        <!-- დღიური სურათის ჩვენების სექცია -->
         <section id="daily-photo-section">
-            <h2>დღევანდელი სურათი</h2>
+            <h2>მოძიებული სურათი</h2>
             <div id="loading-indicator">სურათი იტვირთება...</div>
+            
             <div id="photo-container" class="hidden">
                 <h3 id="photo-title"></h3>
                 <img id="photo-image" src="" alt="ასტრონომიული სურათი">
                 <p id="photo-explanation"></p>
-                <button id="save-button">⭐ რჩეულებში შენახვა</button>
-                <div id="save-feedback" class="hidden"></div>
+                
+                <!-- setTimeout-ით დაგვიანებით გამოჩენილი ღილაკი -->
+                <div id="delayed-info" class="feedback-message"></div>
+                <button id="save-button" class="hidden">⭐ რჩეულებში შენახვა</button>
             </div>
         </section>
 
         <hr>
 
+        <!-- localStorage-ით მართული რჩეულების სექცია -->
         <section id="favorites-section">
             <h2>ჩემი რჩეულები (<span id="fav-count">0</span>)</h2>
             <div id="favorites-list">
                 <p id="no-favorites-message">რჩეულებში არაფერი გაქვთ.</p>
             </div>
-            <button id="clear-favorites-button">🗑️ რჩეულების გასუფთავება</button>
+            <button id="clear-favorites-button" class="clear-button">🗑️ რჩეულების გასუფთავება</button>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2025 ასტრონომიული დღიური | იყენებს NASA APOD API-ს</p>
+        <p>&copy; 2025 APOD დროის მანქანა | Powered by NASA API</p>
     </footer>
 
     <script src="script.js"></script>
